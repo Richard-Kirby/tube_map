@@ -6,9 +6,9 @@ import socket
 
 import line_status
 import tfl_status
-import met_weather_status
 
 
+# Main threaded Class for the displaying tube line status via a EL Wires.
 class TubelineStatusDisplay(threading.Thread):
 
     def __init__(self):
@@ -48,7 +48,6 @@ class TubelineStatusDisplay(threading.Thread):
         self.tfl_status_thread = tfl_status.Tfl_Status()
         self.tfl_status_thread.daemon = True
         self.tfl_status_thread.start()
-
 
     # Main method that runs regularly in the thread.
     def run(self):
