@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Secret stuff such as credentials.  R. Kirby added on 28 Fab 2020
+*.secret
