@@ -4,6 +4,9 @@ import ntplib
 import sys
 import socket
 
+# WS2812 library
+import rpi_ws281x
+
 import line_status
 import tfl_status
 
@@ -16,9 +19,13 @@ class TubelineStatusDisplay(threading.Thread):
         # Init the threading
         threading.Thread.__init__(self)
 
-        # Start the display
-        self.line_display = line_status.LineDisplay()
-        self.line_display.start()
+        # LED strip configuration:
+        LED_COUNT = 100  # Number of LED pixels.
+        LED_PIN = 18  # GPIO pin connected to the pixels (must support PWM!).
+
+        self.led_station_control = line_status.LedStationControl(LED_COUNT, LED_PIN, type=rpi_ws281x.SK6812_STRIP)
+
+        self.led_station_control.start()
         self.last_time_displayed = None
         self.display_interval_min = 1
 
@@ -56,7 +63,7 @@ class TubelineStatusDisplay(threading.Thread):
             current_time = time.localtime()
 
             if self.tfl_status_thread.status_dictionary is not None:
-                self.line_display.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
+                self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
 
             time.sleep(5)
 

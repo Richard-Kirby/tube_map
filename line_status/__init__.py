@@ -1,1 +1,1 @@
-from line_status.line_display_control import LineDisplay
+from line_status.led_strip_control import LedStationControl

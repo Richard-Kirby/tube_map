@@ -45,6 +45,7 @@ class Line(threading.Thread):
             # Not all lines may be assigned a GPIO
             if self.gpio is not None:
                 print("***Status for {} is {} GPIO {}".format(self.name, self.status, self.gpio))
+                time.sleep(1)
 
                 if self.status is None:
                     pi.write(self.gpio, 0)
@@ -57,6 +58,8 @@ class Line(threading.Thread):
                 # elif self.status is "SEV.D":
 
                 else:  # ToDo - handle other states separately
+
+                    print (self.gpio, "not OK")
 
                     dot_len = 0.5  # morse code length of .
 
@@ -88,7 +91,6 @@ class Line(threading.Thread):
                     time.sleep(dot_len * 5)
 
 
-
 # This class holds all the lines and sorts out the status passed to it.
 class LineStatus:
 
@@ -96,11 +98,11 @@ class LineStatus:
 
         self.line_list = [["Bakerloo", Line("Bakerloo", "BAK", None)],
                           ["Central", Line("Central", "CEN", None)],
-                          ["Circle", Line("Circle", "CIR", None)],
-                          ["District", Line("District", "DIS", 27)],
-                          ["Hammersmith & City", Line("Hammersmith & City", "H&C", 17)],
+                          ["Circle", Line("Circle", "CIR", 19)],
+                          ["District", Line("District", "DIS", 17)],
+                          ["Hammersmith & City", Line("Hammersmith & City", "H&C", 26)],
                           ["Jubilee", Line("Jubilee", "JUB", None)],
-                          ["Metropolitan", Line("Metropolitan", "Met", 26)],
+                          ["Metropolitan", Line("Metropolitan", "Met", 13)],
                           ["Northern", Line("Northern", "NOR", None)],
                           ["Piccadilly", Line("Piccadilly", "Picc", None)],
                           ["Waterloo & City", Line("Waterloo & City", "W&C", None)],
