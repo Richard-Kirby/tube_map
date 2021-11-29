@@ -61,9 +61,9 @@ class LedStationControl(threading.Thread):
         self.line_colours = {
             'District': (51, 0, 0),
             'Circle': (75, 75, 35),
-            'H&C': (50, 85, 85),
-            'Jub': (75, 75, 75),
-            'Met': (0, 102, 51)
+            'Hammersmith & City': (50, 85, 85),
+            'Jubilee': (75, 75, 75),
+            'Metropolitan': (0, 102, 51)
         }
 
         # Connnection to the DB.
@@ -144,7 +144,6 @@ class LedStationControl(threading.Thread):
                     self.tfl_status_dict = self.tfl_status_queue.get_nowait()
 
                 if self.tfl_status_dict is not None:
-                    # self.line_status.fill_line_status(self.tfl_status_dict)
                     print(self.tfl_status_dict)
 
                     self.pixel_clear()
@@ -184,23 +183,44 @@ if __name__ == "__main__":
     LED_PIN = 18      # GPIO pin connected to the pixels (must support PWM!).
 
     led_station_control = LedStationControl(LED_COUNT, LED_PIN, type = rpi_ws281x.SK6812_STRIP)
+    led_station_control.start()
 
-    lines = ['Circle', 'District', 'H&C', 'Jub', 'Met']
+    sample_data=[
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Severe Delays', 'District': 'Good Service',
+     'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'},
+
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Good Service', 'District': 'Severe Delays',
+     'Hammersmith & City': 'Good Service', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'},
+
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Good Service', 'District': 'Good Service',
+     'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Good Service', 'Metropolitan': 'Severe Delays',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'},
+
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Good Service', 'District': 'Good Service',
+     'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Severe Delays', 'Metropolitan': 'Good Service',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'},
+
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Good Service', 'District': 'Good Service',
+     'Hammersmith & City': 'Severe Delays', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'},
+
+    {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Minor Delays', 'District': 'Minor Delays',
+     'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Minor Delays', 'Metropolitan': 'Minor Delays',
+     'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+     'Waterloo & City': 'Good Service'}
+
+    ]
+
 
     while True:
-        led_station_control.pixel_clear()
-
-        led_station_control.populate_pixels(lines[0], 'Good Service')
-        led_station_control.populate_pixels(lines[1], 'Minor Delays')
-        led_station_control.populate_pixels(lines[2], 'Minor Delays')
-        led_station_control.populate_pixels(lines[3], 'Minor Delays')
-        led_station_control.populate_pixels(lines[4], 'Good Service')
-
-        for i in range(48):
-            led_station_control.draw_pixel_states()
-            time.sleep(0.5)
-
-        # Change the lines around so the one on top is modified.
-        # Important for shared stations as only on LED.
-        end = lines.pop()
-        lines.insert(0, end)
+        for i in range(len(sample_data)):
+            led_station_control.tfl_status_queue.put_nowait(sample_data[i])
+            print(sample_data[i])
+            time.sleep(20)
