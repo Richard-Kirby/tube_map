@@ -14,7 +14,7 @@ with db_con:
 
 sql = 'INSERT INTO STATION (PixelNum, Name, Line) values(?, ?, ?)'
 data = [
-    (0, 'Amersham', 'Metropolitanropolitan'),
+    (0, 'Amersham', 'Metropolitan'),
     (1, 'Chalfort and Latimer', 'Metropolitan'),
     (2,'Rickmansworth' , 'Metropolitan'),
     (3, 'Northwood', 'Metropolitan'),
@@ -60,6 +60,7 @@ data = [
     (25, 'West Ham', 'District'),
     (26, 'East Ham', 'Hammersmith & City'),
     (26, 'East Ham', 'District'),
+    (27, 'Dagenham Heathway', 'District'),
     (28, 'Upminster', 'District'),
     (29, 'Elm Park', 'District'),
     (30, 'Upney', 'District'),
@@ -79,6 +80,8 @@ data = [
     (37, 'Cannon Street', 'District'),
     (39, 'Embankment', 'Circle'),
     (39, 'Embankment', 'District'),
+    (40, 'Victoria','District'),
+    (40, 'Victoria', 'Circle'),
     (41, 'Westminster', 'Circle'),
     (41, 'Westminster', 'District'),
     (42, 'South Kensington', 'Circle'),
@@ -114,6 +117,57 @@ data = [
     (62, 'Edgware Road', 'District'),
     (63, 'Royal Oak', 'Hammersmith & City'),
     (63, 'Royal Oak', 'Circle'),
+    (77, 'Baker Street', 'Jubilee'),
+    (78, 'Euston Square', 'Circle'),
+    (78, 'Euston Square','Hammersmith & City'),
+    (78, 'Euston Square', 'Metropolitan'),
+
+    (79, 'Baker Street', 'Circle'),
+    (79, 'Baker Street', 'Hammersmith & City'),
+    (79, 'Baker Street', 'Metropolitan'),
+
+    (80, 'Bond Street', 'Jubilee'),
+
+    (81, 'Embankmant', 'Circle'),
+    (81, 'Embankmant', 'District'),
+
+    (82, 'Monument', 'Circle'),
+    (82, 'Monument', 'District'),
+
+    (83, 'Blackfriars', 'Circle'),
+    (83, 'Blackfriars', 'District'),
+
+    (84, 'Moorgate', 'Circle'),
+    (84, 'Moorgate', 'Hammersmith & City'),
+    (84, 'Moorgate', 'Metropolitan'),
+
+    (85, 'Farringdon', 'Circle'),
+    (85, 'Farringdon', 'Hammersmith & City'),
+    (85, 'Farringdon', 'Metropolitan'),
+
+    (86, 'Canon Street', 'Circle'),
+    (86, 'Canon Street', 'District'),
+
+    (87, 'Liverpool Street', 'Circle'),
+    (87, 'Liverpool Street', 'Hammersmith & City'),
+    (87, 'Liverpool Street', 'Metropolitan'),
+
+    (88, 'Tower Hill', 'Circle'),
+    (88, 'Tower Hill', 'District'),
+
+    (89, 'Aldgate East', 'Hammersmith & City'),
+    (89, 'Aldgate East', 'District'),
+
+    (90, 'Bakerloo Status', 'Bakerloo'),
+    (91, 'Circle Status', 'Circle'),
+    (92, 'Hammersmith & City Status', 'Hammersmith & City'),
+    (93, 'Piccadilly Status', 'Piccadilly'),
+    (94, 'Metropolitan Status', 'Metropolitan'),
+    (95, 'Central Status', 'Central'),
+    (96, 'District Status', 'District'),
+    (97, 'Jubilee Status', 'Jubilee'),
+    (98, 'Northern Status', 'Northern'),
+    (99, 'Victoria Status', 'Victoria')
 ]
 
 with db_con:

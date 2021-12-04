@@ -63,7 +63,12 @@ class LedStationControl(threading.Thread):
             'Circle': (75, 75, 35),
             'Hammersmith & City': (50, 85, 85),
             'Jubilee': (75, 75, 75),
-            'Metropolitan': (0, 102, 51)
+            'Metropolitan': (0, 102, 51),
+            'Bakerloo': (76, 153, 0),
+            'Central': (0, 75, 0),
+            'Piccadilly': (0, 0, 75),
+            'Victoria': (75, 0, 153),
+            'Northern': (60, 60, 60)
         }
 
         # Connnection to the DB.
@@ -136,7 +141,8 @@ class LedStationControl(threading.Thread):
         try:
             self.tfl_status_dict = None
 
-            line_order = ['Circle', 'District', 'Hammersmith & City', 'Jubilee', 'Metropolitan']
+            line_order = ['Circle', 'District', 'Hammersmith & City', 'Jubilee', 'Metropolitan', 'Central', 'Bakerloo',
+                          'Northern', 'Piccadilly', 'Victoria']
 
             while True:
                 # Get the latest commanded pixels from the queue
@@ -183,7 +189,22 @@ if __name__ == "__main__":
     LED_PIN = 18      # GPIO pin connected to the pixels (must support PWM!).
 
     led_station_control = LedStationControl(LED_COUNT, LED_PIN, type = rpi_ws281x.SK6812_STRIP)
-    led_station_control.start()
+    led_station_control.set_same_colour((50,0,0), 100)
+    #time.sleep(2)
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='LED to light.')
+
+    parser.add_argument('pixel', type= int)
+    cl_args = vars(parser.parse_args())
+    pix_to_light = cl_args['pixel']
+
+    led_station_control.strip.setPixelColor(pix_to_light, rpi_ws281x.Color(0, 75, 0))
+    led_station_control.strip.show()
+
+    #led_station_control.start()
+
 
     sample_data=[
     {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Severe Delays', 'District': 'Good Service',
