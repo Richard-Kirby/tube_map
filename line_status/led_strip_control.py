@@ -146,7 +146,7 @@ class LedStationControl(threading.Thread):
                 if self.tfl_status_dict is not None:
                     print(self.tfl_status_dict)
 
-                    self.pixel_clear()
+                    #self.pixel_clear()
 
                     for line in line_order:
                         if line in self.tfl_status_dict:
@@ -162,7 +162,7 @@ class LedStationControl(threading.Thread):
                     end = line_order.pop()
                     line_order.insert(0, end)
 
-                    time.sleep(2)
+                    #time.sleep(2)
 
         except KeyboardInterrupt:
             logger.exception("Keyboard interrupt")

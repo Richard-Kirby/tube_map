@@ -65,7 +65,7 @@ class TubelineStatusDisplay(threading.Thread):
             if self.tfl_status_thread.status_dictionary is not None:
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
 
-            time.sleep(5)
+            time.sleep(60)
 
 
 if __name__ == "__main__":
