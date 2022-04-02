@@ -4,6 +4,7 @@ import threading
 import queue
 import sqlite3
 
+
 import logging
 # create logger
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class LedStationControl(threading.Thread):
 
         self.strip = rpi_ws281x.PixelStrip(led_count, led_pin, gamma=gamma8, strip_type= type)
 
+        print("led count {}".format(led_count))
         # Intialize the library (must be called once before other functions).
         self.strip.begin()
 
@@ -185,27 +187,57 @@ class LedStationControl(threading.Thread):
 if __name__ == "__main__":
 
     # LED strip configuration:
-    LED_COUNT = 100      # Number of LED pixels.
+    LED_COUNT = 298      # Number of LED pixels.
     LED_PIN = 18      # GPIO pin connected to the pixels (must support PWM!).
 
     led_station_control = LedStationControl(LED_COUNT, LED_PIN, type = rpi_ws281x.SK6812_STRIP)
-    led_station_control.set_same_colour((50,0,0), 100)
-    #time.sleep(2)
 
-    import argparse
+    import pigpio
 
-    parser = argparse.ArgumentParser(description='LED to light.')
+    pi = pigpio.pi()
 
-    parser.add_argument('pixel', type= int)
-    cl_args = vars(parser.parse_args())
-    pix_to_light = cl_args['pixel']
+    while True:
+        led_station_control.set_same_colour((0,0,0), LED_COUNT)
+        print(led_station_control.strip.getPixelColor(10))
+        print(led_station_control.strip.getPixelColor(50))
+        print(led_station_control.strip.getPixelColor(100))
+        print(led_station_control.strip.getPixelColor(150))
 
-    led_station_control.strip.setPixelColor(pix_to_light, rpi_ws281x.Color(0, 75, 0))
-    led_station_control.strip.show()
+
+        time.sleep(2)
+
+        import argparse
+
+        parser = argparse.ArgumentParser(description='LED to light.')
+
+        parser.add_argument('pixel', type= int)
+        cl_args = vars(parser.parse_args())
+        pix_to_light = cl_args['pixel']
+
+        led_station_control.strip.setPixelColor(pix_to_light, rpi_ws281x.Color(0, 0, 50))
+        print(led_station_control.strip.getPixelColor(pix_to_light))
+
+        led_station_control.strip.show()
+        time.sleep(2)
+
+        for i in range(LED_COUNT):
+            led_station_control.strip.setPixelColor(i, rpi_ws281x.Color(0, 50, 0))
+            led_station_control.strip.show()
+            print(i, led_station_control.strip.getPixelColor(i), led_station_control.strip.getPixelColor(i+100),
+                  led_station_control.strip.getPixelColor(i+200))
+
+            if i % 2:
+                time.sleep(0.1)
+                pi.write(21, 1)
+            else:
+                time.sleep(0.1)
+                pi.write(21, 0)
+
+            time.sleep(0.5)
 
     #led_station_control.start()
 
-
+'''
     sample_data=[
     {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Severe Delays', 'District': 'Good Service',
      'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
@@ -245,3 +277,5 @@ if __name__ == "__main__":
             led_station_control.tfl_status_queue.put_nowait(sample_data[i])
             print(sample_data[i])
             time.sleep(20)
+
+'''
