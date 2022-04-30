@@ -57,8 +57,7 @@ class LedStationControl(threading.Thread):
         # Init the threading
         threading.Thread.__init__(self)
 
-        print("***** Starting LedStationControl in led_strip_control.py")
-
+        # Set up the pixel library
         self.strip = rpi_ws281x.PixelStrip(led_count, led_pin, gamma=gamma8, strip_type= type)
 
         # print("led count {}".format(led_count))
@@ -73,11 +72,13 @@ class LedStationControl(threading.Thread):
 
         # Patterns for each of the Services Status types - defines how the pixels change depending on line status.
         self.patterns = {
-            'Good Service': [1, 1, 1, 1, 1, 1, 1, 1],
-            'Severe Delays': [1, 0, 1, 0, 1, 0, 1, 0],
-            'Minor Delays': [1, 0.8, 1, 0.8, 1, 0.8, 1, 0.8],
-            'Closure': [1, 0, 0, 0, 1, 0, 0, 0],
-            'default': [1, 0, 0, 0, 1, 0, 0, 0]
+            'Good Service':     [1,     1,  1,  1,  1,  1,  1, 1],
+            'Severe Delays':    [1,     0,  1,  0,  1,  0,  1, 0],
+            'Minor Delays':     [1,     0.6,1,  0.6,1,  0.6,1, 0.6],
+            'Part Closure':     [1,     0,  0,  1,  0,  0,  0, 0],
+            'Planned Closure':  [1,     0,  0,  1,  0,  0,  0, 0],
+            'Closure':          [1,     0,  0,  1,  0,  0,  0, 0],
+            'default':          [1,     0,  0,  0,  1,  0,  0, 0]
         }
 
         # Base colours for each line.
@@ -91,7 +92,7 @@ class LedStationControl(threading.Thread):
             'Central': (0, 75, 0),
             'Piccadilly': (0, 0, 75),
             'Victoria': (75, 0, 153),
-            'Northern': (60, 60, 60),
+            'Northern': (110, 110, 110),
             'Waterloo & City': (60, 60, 60),
             "DLR": (60, 60, 60)
         }
@@ -102,7 +103,7 @@ class LedStationControl(threading.Thread):
     # Populate pixels with the line's status.  This is called for each line.
     def populate_pixels(self, line, status):
         with self.db_con:
-            print(line)
+            #print(line)
             #line_data = self.db_con.execute("SELECT * FROM Pixels WHERE Line == '{}'".format(line))
             line_data = self.db_con.execute("UPDATE Pixels SET status = '{}' WHERE Line == '{}'"
                                             .format(status, line))
@@ -113,8 +114,8 @@ class LedStationControl(threading.Thread):
 
             # self.db_con.cursor.close()
 
-            for station in updated:
-                print(station)
+            #for station in updated:
+                # print(station)
                 #self.db_con.execute(
                 #    "UPDATE Pixels SET status ='{}', Name = '{}', Line = '{}' where PixelNum =='{}' and StrandNum=='{}'"
                 #    .format(status, station[1], line, , station[3]))
@@ -125,7 +126,7 @@ class LedStationControl(threading.Thread):
         if (count == None):
             count = self.strip.numPixels()
 
-        print(count)
+        # print(count)
         for i in range(count):
             self.strip.setPixelColor(i, rpi_ws281x.Color(*colour))
         self.strip.show()
@@ -174,6 +175,7 @@ class LedStationControl(threading.Thread):
                 pixel_data = self.db_con.execute(query)
 
             # Process each pixel, some pixels are over-written as they represent multiple lines.
+            # TODO: Need to modify this part to go through the line order.
             for pixel in pixel_data:
                 service_type = pixel[5]
                 # print(service_type)
@@ -203,6 +205,8 @@ class LedStationControl(threading.Thread):
             last_item = self.patterns[key].pop()
             self.patterns[key].insert(0, last_item)
 
+        time.sleep(1)
+
 
     def run(self):
         try:
@@ -217,14 +221,14 @@ class LedStationControl(threading.Thread):
                     self.tfl_status_dict = self.tfl_status_queue.get_nowait()
 
                 if self.tfl_status_dict is not None:
-                    print(self.tfl_status_dict)
+                    # print(self.tfl_status_dict)
 
                     #self.pixel_clear()
 
                     for line in line_order:
                         if line in self.tfl_status_dict:
                             self.populate_pixels(line, self.tfl_status_dict[line])
-                            print(line, self.tfl_status_dict[line])
+                            # print(line, self.tfl_status_dict[line])
 
                     for i in range(48):
                         self.draw_pixel_states()
@@ -234,6 +238,7 @@ class LedStationControl(threading.Thread):
                     # Important for shared stations as only on LED.
                     end = line_order.pop()
                     line_order.insert(0, end)
+                    # print(line_order)
 
                     #time.sleep(2)
 

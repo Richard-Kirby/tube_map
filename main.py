@@ -72,6 +72,8 @@ if __name__ == "__main__":
 
     print("main program")
 
+    # TODO:Northern Line London Bridge seems to be set as JL.
+
     tubeline_status_display = TubelineStatusDisplay()
     tubeline_status_display.daemon = True
     tubeline_status_display.start()
