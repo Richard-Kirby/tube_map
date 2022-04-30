@@ -3,14 +3,30 @@ import random
 import threading
 import queue
 import sqlite3
-
-
+import os
+import subprocess
 import logging
 # create logger
 logger = logging.getLogger(__name__)
 
+# PIGPIO is used to control digital IO
+import pigpio
+
 # WS2812 library
 import rpi_ws281x
+
+"""
+This bit just gets the pigpiod daemon up and running if it isn't already.
+The pigpio daemon accesses the Raspberry Pi GPIO.  
+"""
+p = subprocess.Popen(['pgrep', '-f', 'pigpiod'], stdout=subprocess.PIPE)
+out, err = p.communicate()
+
+if len(out.strip()) == 0:
+    os.system("sudo pigpiod")
+    time.sleep(3)
+
+
 
 # Gamma correction makes the colours perceived correctly.
 gamma8 = [
@@ -43,12 +59,15 @@ class LedStationControl(threading.Thread):
 
         self.strip = rpi_ws281x.PixelStrip(led_count, led_pin, gamma=gamma8, strip_type= type)
 
-        print("led count {}".format(led_count))
+        # print("led count {}".format(led_count))
         # Intialize the library (must be called once before other functions).
         self.strip.begin()
 
         self.tfl_status_dict = None
         self.tfl_status_queue = queue.Queue()
+
+        # Set up the pi object to control the digital inputs/outputs.
+        self.pi = pigpio.pi()
 
         # Patterns for each of the Services Status types - defines how the pixels change depending on line status.
         self.patterns = {
@@ -70,7 +89,9 @@ class LedStationControl(threading.Thread):
             'Central': (0, 75, 0),
             'Piccadilly': (0, 0, 75),
             'Victoria': (75, 0, 153),
-            'Northern': (60, 60, 60)
+            'Northern': (60, 60, 60),
+            'Waterloo & City': (60, 60, 60),
+            "DLR": (60, 60, 60)
         }
 
         # Connnection to the DB.
@@ -79,12 +100,22 @@ class LedStationControl(threading.Thread):
     # Populate pixels with the line's status.  This is called for each line.
     def populate_pixels(self, line, status):
         with self.db_con:
-            line_data = self.db_con.execute("SELECT * FROM STATION WHERE Line == '{}'".format(line))
+            print(line)
+            #line_data = self.db_con.execute("SELECT * FROM Pixels WHERE Line == '{}'".format(line))
+            line_data = self.db_con.execute("UPDATE Pixels SET status = '{}' WHERE Line == '{}'"
+                                            .format(status, line))
 
-            for station in line_data:
-                self.db_con.execute(
-                    "UPDATE Pixels SET Status ='{}', Station = '{}', Line = '{}' where PixelNum =='{}'"
-                    .format(status, line, station[1], station[3]))
+            #print(line_data)
+
+            updated= self.db_con.execute("SELECT * FROM Pixels")
+
+            # self.db_con.cursor.close()
+
+            for station in updated:
+                print(station)
+                #self.db_con.execute(
+                #    "UPDATE Pixels SET status ='{}', Name = '{}', Line = '{}' where PixelNum =='{}' and StrandNum=='{}'"
+                #    .format(status, station[1], line, , station[3]))
 
     # Not a main function - leaving it in case needed for debugging.
     def set_same_colour(self, colour, count= None):
@@ -105,46 +136,78 @@ class LedStationControl(threading.Thread):
 
         self.strip.show()
 
+    # Set the strand number by setting the demux
+    def set_pixel_strand(self, strand_num):
+
+        # Set all to zero (strip 0)
+        self.pi.write(13, 0)
+        self.pi.write(6, 0)
+        self.pi.write(5, 0)
+
+        # Set the necessary bits high according to the strand number.
+        if strand_num == 1:
+            self.pi.write(13, 1)
+        elif strand_num == 2:
+            self.pi.write(13, 0)
+            self.pi.write(6, 1)
+        elif strand_num == 3:
+            self.pi.write(13, 1)
+            self.pi.write(6, 1)
+
     # Draw the status according to the line status.
     def draw_pixel_states(self):
-        for i in range(100):
-            self.strip.setPixelColor(i, rpi_ws281x.Color(0, 0, 0))
 
-        # Some pixels are not used - only get those pixels that are populated.
-        with self.db_con:
-            pixel_data = self.db_con.execute("Select * from Pixels WHERE Status != 'No Status'")
+        # Cycle through each strand (4 of)
+        for i in range(4):
+            self.set_pixel_strand(i)
 
-        # Process each pixel, some pixels are over-written as they represent multiple lines.
-        for pixel in pixel_data:
-            service_type = pixel[4]
+            # There is only 1 logical strip - set them to black
+            for j in range(100):
+                self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
 
-            # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
-            if service_type not in self.patterns.keys():
-                print("Error - don't recognise {}".format(service_type))
-                service_type = 'default'
+            # Some pixels are not used - only get those pixels that are populated.
+            with self.db_con:
+                query = "Select * from Pixels WHERE Status != 'No Status' AND StrandNum == '{}'".format(i)
+                # print(query)
+                pixel_data = self.db_con.execute(query)
 
-            # Patterns use different pixel blinking frequencies to show state.
-            colour = (int(self.patterns[service_type][0] * self.line_colours[pixel[2]][0]),
-                      int(self.patterns[service_type][0] * self.line_colours[pixel[2]][1]),
-                      int(self.patterns[service_type][0] * self.line_colours[pixel[2]][2]))
+            # Process each pixel, some pixels are over-written as they represent multiple lines.
+            for pixel in pixel_data:
+                service_type = pixel[5]
+                # print(service_type)
+                # print(pixel)
 
-            # The actual setting of colour - as noted may be over-written by other lines.
-            self.strip.setPixelColor(pixel[1], rpi_ws281x.Color(*colour))
+                # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
+                if service_type not in self.patterns.keys():
+                    print("Error - don't recognise {}".format(service_type))
+                    service_type = 'default'
+
+                # Patterns use different pixel blinking frequencies to show state.
+                colour = (int(self.patterns[service_type][0] * self.line_colours[pixel[2]][0]),
+                          int(self.patterns[service_type][0] * self.line_colours[pixel[2]][1]),
+                          int(self.patterns[service_type][0] * self.line_colours[pixel[2]][2]))
+
+                # The actual setting of colour - as noted may be over-written by other lines.
+                # print(pixel[4])
+                self.strip.setPixelColor(pixel[4], rpi_ws281x.Color(*colour))
+
+
+            # Shows the pixels once they are all ready.
+            self.strip.show()
+            time.sleep(0.01)
 
         # rotate to the next part of the pattern.
         for key in self.patterns.keys():
             last_item = self.patterns[key].pop()
             self.patterns[key].insert(0, last_item)
 
-        # Shows the pixels once they are all ready.
-        self.strip.show()
 
     def run(self):
         try:
             self.tfl_status_dict = None
 
             line_order = ['Circle', 'District', 'Hammersmith & City', 'Jubilee', 'Metropolitan', 'Central', 'Bakerloo',
-                          'Northern', 'Piccadilly', 'Victoria']
+                          'Northern', 'Piccadilly', 'Victoria', 'Waterloo & City']
 
             while True:
                 # Get the latest commanded pixels from the queue
@@ -187,58 +250,19 @@ class LedStationControl(threading.Thread):
 if __name__ == "__main__":
 
     # LED strip configuration:
-    LED_COUNT = 298      # Number of LED pixels.
+    LED_COUNT = 100      # Number of LED pixels.
     LED_PIN = 18      # GPIO pin connected to the pixels (must support PWM!).
 
     led_station_control = LedStationControl(LED_COUNT, LED_PIN, type = rpi_ws281x.SK6812_STRIP)
-
-    import pigpio
-
-    pi = pigpio.pi()
-
-    while True:
-        led_station_control.set_same_colour((0,0,0), LED_COUNT)
-        print(led_station_control.strip.getPixelColor(10))
-        print(led_station_control.strip.getPixelColor(50))
-        print(led_station_control.strip.getPixelColor(100))
-        print(led_station_control.strip.getPixelColor(150))
+    led_station_control.start()
 
 
-        time.sleep(2)
-
-        import argparse
-
-        parser = argparse.ArgumentParser(description='LED to light.')
-
-        parser.add_argument('pixel', type= int)
-        cl_args = vars(parser.parse_args())
-        pix_to_light = cl_args['pixel']
-
-        led_station_control.strip.setPixelColor(pix_to_light, rpi_ws281x.Color(0, 0, 50))
-        print(led_station_control.strip.getPixelColor(pix_to_light))
-
-        led_station_control.strip.show()
-        time.sleep(2)
-
-        for i in range(LED_COUNT):
-            led_station_control.strip.setPixelColor(i, rpi_ws281x.Color(0, 50, 0))
-            led_station_control.strip.show()
-            print(i, led_station_control.strip.getPixelColor(i), led_station_control.strip.getPixelColor(i+100),
-                  led_station_control.strip.getPixelColor(i+200))
-
-            if i % 2:
-                time.sleep(0.1)
-                pi.write(21, 1)
-            else:
-                time.sleep(0.1)
-                pi.write(21, 0)
-
-            time.sleep(0.5)
-
-    #led_station_control.start()
-
-'''
     sample_data=[
+    {'Bakerloo': 'Good Service', 'Central': 'Good Service', 'Circle': 'Good Service', 'District': 'Good Service',
+         'Hammersmith & City': 'Good Service', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
+         'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
+         'Waterloo & City': 'Good Service'},
+
     {'Bakerloo': 'Severe Delays', 'Central': 'Good Service', 'Circle': 'Severe Delays', 'District': 'Good Service',
      'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Good Service', 'Metropolitan': 'Good Service',
      'Northern': 'Good Service', 'Piccadilly': 'Good Service', 'Victoria': 'Good Service',
@@ -277,5 +301,3 @@ if __name__ == "__main__":
             led_station_control.tfl_status_queue.put_nowait(sample_data[i])
             print(sample_data[i])
             time.sleep(20)
-
-'''

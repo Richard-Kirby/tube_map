@@ -68,6 +68,24 @@ class LedStationControl(threading.Thread):
         self.strip.show()
 
 
+    def identify_pixel(self, string, pixel, colour):
+        pi.write(13, 0)
+        pi.write(6, 0)
+        pi.write(5, 0)
+
+        self.strip.setPixelColor(pixel, rpi_ws281x.Color(*colour))
+
+        if string == 1:
+            pi.write(13, 1)
+        elif string == 2:
+            pi.write(13, 0)
+            pi.write(6, 1)
+        elif string == 3:
+            pi.write(13, 1)
+            pi.write(6, 1)
+
+        self.strip.show()
+
 
 if __name__ == "__main__":
 
@@ -85,7 +103,8 @@ if __name__ == "__main__":
     #      pass
 
 
-    while True:
+    #while True:
+    if True:
 
         print("strip initialised")
         # All demux outputs ABC = 0
@@ -98,7 +117,7 @@ if __name__ == "__main__":
         pi.write(5, 0)
 
         print("Clear demux outputs")
-        time.sleep(2)
+        time.sleep(0.1)
 
         # Clear both strips to black. Strip 0 is blanked first, followed by strip 1.
         led_station_control.set_same_colour((0,0,0), LED_COUNT)
@@ -115,14 +134,22 @@ if __name__ == "__main__":
         led_station_control.set_same_colour((0,0,0), LED_COUNT)
         time.sleep(0.1)
 
-        pi.write(13, 0) # Strip 0 on again
-        time.sleep(2)
+        # Strip 3
+        pi.write(13, 1) # Switch strip 1 on, strip 0 off.
+        pi.write(6, 1) # Switch strip 1 on, strip 0 off.
+        led_station_control.set_same_colour((0,0,0), LED_COUNT)
+        time.sleep(0.1)
 
-        for i in range(LED_COUNT):
+        pi.write(13, 0) # Strip 0 on again
+        time.sleep(0.1)
+
+        for i in range(0, 1):
+
+            start_pixel = 0
 
             # Strip 0 command
-            for j in range (0, LED_COUNT):
-                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(50, 50, 125))
+            for j in range (start_pixel, LED_COUNT):
+                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(50, 75, 125))
 
 
             pi.write(13, 0)
@@ -133,16 +160,16 @@ if __name__ == "__main__":
             time.sleep(0.1)
 
             # Strip 1 command
-            for j in range (0, LED_COUNT):
-                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(125, 25, 50))
+            for j in range (start_pixel, LED_COUNT):
+                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(125, 25, 75))
 
             pi.write(13, 1)
             led_station_control.strip.show()
             print("strip 1 pixel ", i )
 
             # Strip 2 command
-            for j in range (0, LED_COUNT):
-                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(25, 125, 25))
+            for j in range (start_pixel, LED_COUNT):
+                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(75, 125, 25))
 
             time.sleep(0.1)
 
@@ -151,5 +178,41 @@ if __name__ == "__main__":
             led_station_control.strip.show()
             print("strip 2 pixel ", i )
 
+            # Strip 3 command
+            for j in range (start_pixel, LED_COUNT):
+                led_station_control.strip.setPixelColor(j, rpi_ws281x.Color(75, 75, 75))
+
             time.sleep(0.1)
+
+            pi.write(13, 1)
+            pi.write(6, 1)
+            led_station_control.strip.show()
+            print("strip 3 pixel ", i )
+
+
+            time.sleep(1)
+
+    string  = 0
+    pixel = 0
+
+    while True:
+        string_entry = input("{} String. Return for same one: ".format(string))
+
+        led_station_control.identify_pixel(string, pixel, (0, 0, 0))
+
+        if string_entry is "":
+            string = string
+        else:
+            string = int(string_entry)
+
+        pixel_entry = input("{} Pixel. Return for the next one the next one in the same string: ".format(pixel))
+        if pixel_entry is "":
+            pixel = int(pixel) + 1
+        else:
+            pixel = int(pixel_entry)
+
+        print("String {} Pixel {}".format(string, pixel))
+
+        led_station_control.identify_pixel(string, pixel, (0, 200 , 0))
+
     #led_station_control.start()
