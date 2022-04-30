@@ -57,6 +57,8 @@ class LedStationControl(threading.Thread):
         # Init the threading
         threading.Thread.__init__(self)
 
+        print("***** Starting LedStationControl in led_strip_control.py")
+
         self.strip = rpi_ws281x.PixelStrip(led_count, led_pin, gamma=gamma8, strip_type= type)
 
         # print("led count {}".format(led_count))
