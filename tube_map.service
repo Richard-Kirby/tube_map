@@ -1,0 +1,15 @@
+Description="Tube Map"
+Wants=network.target
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/sudo /usr/bin/python3 -u /home/pi/tube_map/main.py
+WorkingDirectory=/home/pi/tube_map
+Restart=on-failure
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

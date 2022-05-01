@@ -205,7 +205,7 @@ class LedStationControl(threading.Thread):
             last_item = self.patterns[key].pop()
             self.patterns[key].insert(0, last_item)
 
-        time.sleep(1)
+        time.sleep(0.5)
 
 
     def run(self):
@@ -232,7 +232,7 @@ class LedStationControl(threading.Thread):
 
                     for i in range(48):
                         self.draw_pixel_states()
-                        time.sleep(0.5)
+                        time.sleep(0.25)
 
                     # Change the lines around so the one on top is modified.
                     # Important for shared stations as only on LED.
