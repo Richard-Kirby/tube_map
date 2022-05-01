@@ -9,7 +9,7 @@ import rpi_ws281x
 
 import line_status
 import tfl_status
-
+import display
 
 # Main threaded Class for the displaying tube line status via a EL Wires.
 class TubelineStatusDisplay(threading.Thread):
@@ -56,16 +56,29 @@ class TubelineStatusDisplay(threading.Thread):
         self.tfl_status_thread.daemon = True
         self.tfl_status_thread.start()
 
+        self.last_time_displayed = None
+        self.clock_display = display.ClockDisplay()
+        self.clock_display.start()
+
+
     # Main method that runs regularly in the thread.
     def run(self):
 
         while True:
             current_time = time.localtime()
+            # print(current_time.tm_min, self.last_time_displayed)
 
             if self.tfl_status_thread.status_dictionary is not None:
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
 
-            time.sleep(60)
+            # checking whether display needs to be updated
+            if self.last_time_displayed is None or (
+                    current_time.tm_min % self.display_interval_min == 0
+                    and current_time.tm_min != self.last_time_displayed):
+                self.clock_display.time_queue.put_nowait(current_time)
+                self.last_time_displayed = current_time.tm_min
+
+            time.sleep(5)
 
 
 if __name__ == "__main__":
@@ -77,6 +90,8 @@ if __name__ == "__main__":
     tubeline_status_display = TubelineStatusDisplay()
     tubeline_status_display.daemon = True
     tubeline_status_display.start()
+
+
 
     while True:
         time.sleep(10)

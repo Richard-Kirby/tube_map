@@ -1,3 +1,4 @@
 requests
 ntplib
 rpi_ws281x
+waveshare-epaper
