@@ -85,14 +85,14 @@ class LedStationControl(threading.Thread):
 
         # Base colours for each line.
         self.line_colours = {
-            'District': (51, 0, 0),
-            'Circle': (75, 75, 35),
-            'Hammersmith & City': (50, 85, 85),
+            'District': (100, 0, 0),
+            'Circle': (100, 100, 50),
+            'Hammersmith & City': (60, 100, 100),
             'Jubilee': (75, 75, 75),
-            'Metropolitan': (0, 102, 51),
-            'Bakerloo': (76, 153, 0),
-            'Central': (0, 75, 0),
-            'Piccadilly': (0, 0, 75),
+            'Metropolitan': (22, 112, 51),
+            'Bakerloo': (101, 168, 42),
+            'Central': (0, 100, 0),
+            'Piccadilly': (0, 0, 100),
             'Victoria': (75, 0, 153),
             'Northern': (110, 110, 110),
             'Waterloo & City': (60, 60, 60),
