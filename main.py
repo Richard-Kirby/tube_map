@@ -64,14 +64,20 @@ class TubelineStatusDisplay(threading.Thread):
     # Main method that runs regularly in the thread.
     def run(self):
 
+        last_status_dict = None
+
         while True:
             current_time = time.localtime()
             # print(current_time.tm_min, self.last_time_displayed)
 
-            if self.tfl_status_thread.status_dictionary is not None:
+            # CHeck if any update on TFL Status
+            if (self.tfl_status_thread.status_dictionary is not None and self.tfl_status_thread.status_dictionary !=
+                last_status_dict):
+                print("** Change in Status or first time getting data")
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
+                last_status_dict = self.tfl_status_thread.status_dictionary
 
-            # checking whether display needs to be updated
+            # checking whether time display needs to be updated
             if self.last_time_displayed is None or (
                     current_time.tm_min % self.display_interval_min == 0
                     and current_time.tm_min != self.last_time_displayed):

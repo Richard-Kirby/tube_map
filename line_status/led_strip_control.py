@@ -6,6 +6,8 @@ import sqlite3
 import os
 import subprocess
 import logging
+import csv
+
 # create logger
 logger = logging.getLogger(__name__)
 
@@ -97,15 +99,21 @@ class LedStationControl(threading.Thread):
             "DLR": (60, 60, 60)
         }
 
-        # Connnection to the DB.
-        self.db_con = sqlite3.connect('lu_station.db', check_same_thread=False)
+        file = open("Tube Map Data.csv")
+        csvreader = csv.reader(file)
+
+        self.map_data=[]
+        for row in csvreader:
+            mapdata_row = {}
+            mapdata_row['station'] = row[0]
+            mapdata_row['line'] = row[1]
+            mapdata_row['strand_num'] = row[2]
+            mapdata_row['pixel_num'] = row[3]
+            self.map_data.append(mapdata_row)
 
         # Create a pixel array for storing the pixel data for processing
         self.pixel_array = [[0] * 100, [0] * 100, [0] * 100, [0] * 100]
 
-    # Updates an individual pixel in the pixel array
-    def update_pixel(self, strand, pixel, station, line, service_type):
-        self.pixel_array[strand][pixel] = {'station': station, 'line': line, 'service_type': service_type}
 
     # prints out the pixel array sparsely (non-zero)
     def print_pixels(self):
@@ -116,32 +124,13 @@ class LedStationControl(threading.Thread):
 
     # Populate pixels with the line's status.  This is called for each line.
     def populate_pixels(self, line, status):
-        with self.db_con:
-            #print(line)
-            #line_data = self.db_con.execute("SELECT * FROM Pixels WHERE Line == '{}'".format(line))
-            line_data = self.db_con.execute("UPDATE Pixels SET status = '{}' WHERE Line == '{}'"
-                                            .format(status, line))
 
-            #print(line_data)
+            for pixel_record in self.map_data:
 
-            updated= self.db_con.execute("SELECT * FROM Pixels")
+                if pixel_record['line'] == line:
+                    self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                        {'station': pixel_record['station'], 'line': line, 'service_type': status}
 
-            for pixel_record in updated:
-                #print(pixel_record)
-
-                if pixel_record[2] == line:
-                    # print("**", pixel_record['strand_num'], pixel_record['pixel'])
-                    self.update_pixel(pixel_record[3], pixel_record[4], pixel_record[1], line, status)
-
-            self.print_pixels()
-
-            # self.db_con.cursor.close()
-
-            #for station in updated:
-                # print(station)
-                #self.db_con.execute(
-                #    "UPDATE Pixels SET status ='{}', Name = '{}', Line = '{}' where PixelNum =='{}' and StrandNum=='{}'"
-                #    .format(status, station[1], line, , station[3]))
 
     # Not a main function - leaving it in case needed for debugging.
     def set_same_colour(self, colour, count= None):

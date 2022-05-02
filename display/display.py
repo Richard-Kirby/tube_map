@@ -31,7 +31,7 @@ class ClockDisplay(threading.Thread):
 
         # Display Set up.
         self.disp = epaper.epaper('epd2in13bc').EPD()
-        print("w x h", self.disp.width, self.disp.height)
+        # print("w x h", self.disp.width, self.disp.height)
 
         # init and Clear
         self.disp.init()
