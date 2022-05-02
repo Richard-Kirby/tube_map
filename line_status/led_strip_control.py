@@ -100,6 +100,20 @@ class LedStationControl(threading.Thread):
         # Connnection to the DB.
         self.db_con = sqlite3.connect('lu_station.db', check_same_thread=False)
 
+        # Create a pixel array for storing the pixel data for processing
+        self.pixel_array = [[0] * 100, [0] * 100, [0] * 100, [0] * 100]
+
+    # Updates an individual pixel in the pixel array
+    def update_pixel(self, strand, pixel, station, line, service_type):
+        self.pixel_array[strand][pixel] = {'station': station, 'line': line, 'service_type': service_type}
+
+    # prints out the pixel array sparsely (non-zero)
+    def print_pixels(self):
+        for i in range(4):
+            for j in range(100):
+                if self.pixel_array[i][j] != 0:
+                    print(i, j, self.pixel_array[i][j])
+
     # Populate pixels with the line's status.  This is called for each line.
     def populate_pixels(self, line, status):
         with self.db_con:
@@ -111,6 +125,15 @@ class LedStationControl(threading.Thread):
             #print(line_data)
 
             updated= self.db_con.execute("SELECT * FROM Pixels")
+
+            for pixel_record in updated:
+                #print(pixel_record)
+
+                if pixel_record[2] == line:
+                    # print("**", pixel_record['strand_num'], pixel_record['pixel'])
+                    self.update_pixel(pixel_record[3], pixel_record[4], pixel_record[1], line, status)
+
+            self.print_pixels()
 
             # self.db_con.cursor.close()
 
@@ -169,31 +192,35 @@ class LedStationControl(threading.Thread):
                 self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
 
             # Some pixels are not used - only get those pixels that are populated.
-            with self.db_con:
-                query = "Select * from Pixels WHERE Status != 'No Status' AND StrandNum == '{}'".format(i)
-                # print(query)
-                pixel_data = self.db_con.execute(query)
+            #with self.db_con:
+            #    query = "Select * from Pixels WHERE Status != 'No Status' AND StrandNum == '{}'".format(i)
+            #    # print(query)
+            #    pixel_data = self.db_con.execute(query)
 
             # Process each pixel, some pixels are over-written as they represent multiple lines.
             # TODO: Need to modify this part to go through the line order.
-            for pixel in pixel_data:
-                service_type = pixel[5]
-                # print(service_type)
-                # print(pixel)
+            for j in range(100): # Go through each of the pixels
 
-                # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
-                if service_type not in self.patterns.keys():
-                    print("Error - don't recognise {}".format(service_type))
-                    service_type = 'default'
+                if self.pixel_array[i][j] !=0:
 
-                # Patterns use different pixel blinking frequencies to show state.
-                colour = (int(self.patterns[service_type][0] * self.line_colours[pixel[2]][0]),
-                          int(self.patterns[service_type][0] * self.line_colours[pixel[2]][1]),
-                          int(self.patterns[service_type][0] * self.line_colours[pixel[2]][2]))
+                    # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
+                    if self.pixel_array[i][j]['service_type'] not in self.patterns.keys():
+                        print("Error - don't recognise {} - setting to default for pixel {}, {}"
+                              .format(service_type, i, j))
+                        self.pixel_array[i][j]['service_type'] = 'default'
 
-                # The actual setting of colour - as noted may be over-written by other lines.
-                # print(pixel[4])
-                self.strip.setPixelColor(pixel[4], rpi_ws281x.Color(*colour))
+                    # Patterns use different pixel blinking frequencies to show state. The pixel data has the line name
+                    # as part of its data.
+                    colour = (int(self.patterns[self.pixel_array[i][j]['service_type']][0]
+                                  * self.line_colours[self.pixel_array[i][j]['line']][0]),
+                              int(self.patterns[self.pixel_array[i][j]['service_type']][0]
+                                  * self.line_colours[self.pixel_array[i][j]['line']][1]),
+                              int(self.patterns[self.pixel_array[i][j]['service_type']][0]
+                                  * self.line_colours[self.pixel_array[i][j]['line']][2]))
+
+                    # The actual setting of colour - as noted may be over-written by other lines.
+                    # print(pixel[4])
+                    self.strip.setPixelColor(j, rpi_ws281x.Color(*colour))
 
 
             # Shows the pixels once they are all ready.
