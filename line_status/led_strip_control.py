@@ -80,6 +80,8 @@ class LedStationControl(threading.Thread):
             'Part Closure':     [1,     0,  0,  1,  0,  0,  0, 0],
             'Planned Closure':  [1,     0,  0,  1,  0,  0,  0, 0],
             'Closure':          [1,     0,  0,  1,  0,  0,  0, 0],
+            'Part Suspended' :  [1,     1,  0,  1,  1,  0,  1, 1],
+            'Special Service':  [1, 1, 0, 1, 1, 0, 1, 1],
             'default':          [1,     0,  0,  0,  1,  0,  0, 0]
         }
 
@@ -195,7 +197,7 @@ class LedStationControl(threading.Thread):
                     # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
                     if self.pixel_array[i][j]['service_type'] not in self.patterns.keys():
                         print("Error - don't recognise {} - setting to default for pixel {}, {}"
-                              .format(service_type, i, j))
+                              .format(self.pixel_array[i][j]['service_type'], i, j))
                         self.pixel_array[i][j]['service_type'] = 'default'
 
                     # Patterns use different pixel blinking frequencies to show state. The pixel data has the line name

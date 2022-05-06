@@ -24,27 +24,33 @@ class Tfl_Status(threading.Thread):
                 .format(config['credentials']['application_keys'], config['credentials']['application_id'])
 
         self.status_dictionary = None
+        self.special_messages = None
 
     # Get the status from the TFL site and process it to get just the summary status.
     def get_summary_status(self):
 
-        status ={}
+        self.status_dictionary ={}
+        self.special_messages = []
 
         try:
             result = requests.get(self.status_request_url).json()
             for line in result:
-                print (line['name'],":", line['lineStatuses'][0]['statusSeverityDescription'])
-                status[line['name']] = line['lineStatuses'][0]['statusSeverityDescription']
+                #print(line)
+                #print (line['name'],":", line['lineStatuses'][0]['statusSeverityDescription'])
+                if "reason" in line['lineStatuses'][0]:
+                    #print(line['name'], ":", line['lineStatuses'][0]['reason'])
+                    self.special_messages.append(line['lineStatuses'][0]['reason'])
+                self.status_dictionary[line['name']] = line['lineStatuses'][0]['statusSeverityDescription']
         except: # removed raise exception - would mean it just gives up.
             print("tfl status get failed - random number generator or Internet not avail?")
             print("Keep Trying")
 
-        return status
-
     def run(self):
         # Get the status every once in a while
         while True:
-            self.status_dictionary = self.get_summary_status()
+            self.get_summary_status()
+            # if self.special_messages !=[]:
+                #print(self.special_messages)
             time.sleep(120)
 
 

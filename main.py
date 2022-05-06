@@ -40,7 +40,7 @@ class TubelineStatusDisplay(threading.Thread):
                 # print (ntp_response.offset)
 
                 if ntp_response.offset < 2:
-                    print("Synced @ {}" .format(i))
+                    #print("Synced @ {}" .format(i))
                     break
 
             except ntplib.NTPException:
@@ -73,9 +73,12 @@ class TubelineStatusDisplay(threading.Thread):
             # CHeck if any update on TFL Status
             if (self.tfl_status_thread.status_dictionary is not None and self.tfl_status_thread.status_dictionary !=
                 last_status_dict):
-                print("** Change in Status or first time getting data")
+                # print("** Change in Status or first time getting data")
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
                 last_status_dict = self.tfl_status_thread.status_dictionary
+
+                # Send special messages to be displayed - if any.
+                self.clock_display.special_msg_queue.put_nowait(self.tfl_status_thread.special_messages)
 
             # checking whether time display needs to be updated
             if self.last_time_displayed is None or (
@@ -89,15 +92,10 @@ class TubelineStatusDisplay(threading.Thread):
 
 if __name__ == "__main__":
 
-    print("main program")
+    # print("main program")
 
     # TODO:Northern Line London Bridge seems to be set as JL.
 
     tubeline_status_display = TubelineStatusDisplay()
     tubeline_status_display.daemon = True
     tubeline_status_display.start()
-
-
-
-    while True:
-        time.sleep(10)
