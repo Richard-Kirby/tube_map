@@ -101,6 +101,10 @@ class LedStationControl(threading.Thread):
             "DLR": (60, 60, 60)
         }
 
+        # Queue for receiving prediction data (arrival times)
+        self.tfl_prediction_queue = queue.Queue()
+        self.tfl_prediction_data = None
+
         file = open("Tube Map Data.csv")
         csvreader = csv.reader(file)
 
@@ -116,7 +120,6 @@ class LedStationControl(threading.Thread):
         # Create a pixel array for storing the pixel data for processing
         self.pixel_array = [[0] * 100, [0] * 100, [0] * 100, [0] * 100]
 
-
     # prints out the pixel array sparsely (non-zero)
     def print_pixels(self):
         for i in range(4):
@@ -127,11 +130,21 @@ class LedStationControl(threading.Thread):
     # Populate pixels with the line's status.  This is called for each line.
     def populate_pixels(self, line, status):
 
-            for pixel_record in self.map_data:
+        for pixel_record in self.map_data:
 
-                if pixel_record['line'] == line:
-                    self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
-                        {'station': pixel_record['station'], 'line': line, 'service_type': status}
+            if pixel_record['line'] == line:
+                self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                    {'station': pixel_record['station'], 'line': line, 'service_type': status}
+
+            # print(self.pixel_array)
+
+    def populate_pixels_with_prediction(self, line):
+
+        for pixel_record in self.map_data:
+
+            if pixel_record['line'] == line:
+                self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                    {'station': pixel_record['station'], 'line': line,}
 
 
     # Not a main function - leaving it in case needed for debugging.
@@ -238,27 +251,60 @@ class LedStationControl(threading.Thread):
                 while not self.tfl_status_queue.empty():
                     self.tfl_status_dict = self.tfl_status_queue.get_nowait()
 
-                if self.tfl_status_dict is not None:
-                    # print(self.tfl_status_dict)
+                # Get the latest commanded pixels from the queue
+                while not self.tfl_status_queue.empty():
+                    self.tfl_prediction_data = self.tfl_prediction_queue.get_nowait()
 
-                    #self.pixel_clear()
+                mode = 'status'
 
-                    for line in line_order:
-                        if line in self.tfl_status_dict:
-                            self.populate_pixels(line, self.tfl_status_dict[line])
-                            # print(line, self.tfl_status_dict[line])
+                if mode== 'prediction':
 
-                    for i in range(48):
-                        self.draw_pixel_states()
-                        time.sleep(0.25)
+                    if self.tfl_prediction_data is not None:
+                        # print(self.tfl_status_dict)
 
-                    # Change the lines around so the one on top is modified.
-                    # Important for shared stations as only on LED.
-                    end = line_order.pop()
-                    line_order.insert(0, end)
-                    # print(line_order)
+                        # self.pixel_clear()
 
-                    #time.sleep(2)
+                        for line in line_order:
+                            if line in self.tfl_status_dict:
+                                self.populate_pixels_with_prediction(line)
+                                # print(line, self.tfl_status_dict[line])
+
+                        for i in range(48):
+                            self.draw_pixel_states()
+                            time.sleep(0.25)
+
+                        # Change the lines around so the one on top is modified.
+                        # Important for shared stations as only on LED.
+                        end = line_order.pop()
+                        line_order.insert(0, end)
+                        # print(line_order)
+
+
+                elif mode == 'status':
+
+                    if self.tfl_status_dict is not None:
+                        # print(self.tfl_status_dict)
+
+                        #self.pixel_clear()
+
+                        for line in line_order:
+                            if line in self.tfl_status_dict:
+                                self.populate_pixels(line, self.tfl_status_dict[line])
+                                # print(line, self.tfl_status_dict[line])
+
+                        for i in range(48):
+                            self.draw_pixel_states()
+                            time.sleep(0.25)
+
+                        # Change the lines around so the one on top is modified.
+                        # Important for shared stations as only on LED.
+                        end = line_order.pop()
+                        line_order.insert(0, end)
+                        # print(line_order)
+
+                        #time.sleep(2)
+                else:
+                    print("mode {} not recognised".format(mode))
 
         except KeyboardInterrupt:
             logger.exception("Keyboard interrupt")

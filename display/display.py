@@ -3,7 +3,7 @@
 import time
 import threading
 import queue
-import colorsys
+import textwrap
 
 import epaper
 
@@ -62,40 +62,42 @@ class ClockDisplay(threading.Thread):
         self.image_black = Image.new('1', (self.disp.width, self.disp.height), 255)  # 255: clear the frame
         self.draw_black = ImageDraw.Draw(self.image_black)
 
+    # Display TFL messages that indicate an issue - messages are not created for Good Service.
     def display_tfl_message(self, message):
         self.image_wipe()
-        parts= [message[:25], message[25:50], message[50:75], message[75:100], message[100:125], message[125:150]]
 
+        # Use text wrapper to get the different parts.
+        parts = textwrap.wrap(message, width=25)
+
+        # Calculate the height and width and adjust to print out the message.
         y_loc =0
+
+        w, font_vert = self.message_font.getsize('hg')
+
         for part in parts:
             # print(part)
-            self.draw_text((y_loc,0), self.message_font, part, self.image_black, rotation = 90)
-            y_loc = y_loc+ 16
+            w, h = self.message_font.getsize(part)
+            x_loc = self.disp.height - w
+            self.draw_text((y_loc, x_loc), self.message_font, part, self.image_red, rotation = 90)
+            y_loc = y_loc + font_vert + 0
+
+        # Write to the display once image is ready.
         self.write_display()
 
-    # Displays dte and time on the screen
+    # Displays ddte and time on the screen
     def display_time(self, time_to_display):
         self.image_wipe()
 
+        #
         date_str = time.strftime("%a %d %m %Y", time_to_display)
         w, h = self.date_font.getsize(date_str)
-        #print("date size", w, h)
         date_offset = int((self.disp.height - w)/2)  # Calculate offset to center text.
-
-        #print("Disp width{} height{} date width{} date height{} offset{}".format(self.disp.width,
-        #                                                                         self.disp.height,
-        #                                                                         w, h, date_offset))
 
         self.draw_text((0, date_offset), self.date_font, date_str, self.image_black, rotation=90)
 
         time_str = time.strftime("%H:%M", time_to_display)
         w, h = self.time_font.getsize(time_str)
-        #print("time size", w, h)
         time_offset = int((self.disp.height - w)/2)  # Calculate offset to center text
-        #print("Disp width{} height{} time width{} time height{} offset{}".format(self.disp.width,
-        #                                                                         self.disp.height,
-        #                                                                         w, h, time_offset))
-
         self.draw_text((20, time_offset), self.time_font, time_str, self.image_red, rotation=90)
 
     # Writes the display frames to the display.
@@ -109,7 +111,9 @@ class ClockDisplay(threading.Thread):
         w, h = font.getsize(text)
         mask = Image.new('1', (w, h), color=1)
         draw = ImageDraw.Draw(mask)
-        draw.text((0, 0), text, 0, font)
+        print("**", text)
+        # draw.text((0, 0), text, 0, font)
+        draw.multiline_text((0, 0), text, fill=0, font= font, align='left', spacing = 1)
         mask = mask.rotate(rotation, expand=True)
         image_red_or_black.paste(mask, position)
 
@@ -124,15 +128,13 @@ class ClockDisplay(threading.Thread):
                 time_to_display = self.time_queue.get_nowait()
                 time_display_count += 1
 
-                # Create blank image for drawing.
-                #self.image = Image.new("RGB", (self.disp.width, self.disp.height), "BLACK")
-                #self.draw = ImageDraw.Draw(self.image)
-
+                # Gets any special messages from the TLF site - these indicate special conditions such as
+                # delays or closures/suspensions, etc.
                 if not self.special_msg_queue.empty():
                     self.special_msgs = self.special_msg_queue.get_nowait()
 
                 # Display time and date
-                if time_display_count % 4 == 0 and len(self.special_msgs) != 0:
+                if time_display_count % 3 == 0 and len(self.special_msgs) != 0:
                     msg_to_display = self.special_msgs.pop(0)
                     self.display_tfl_message(msg_to_display)
                     self.special_msgs.append(msg_to_display)
