@@ -138,14 +138,81 @@ class LedStationControl(threading.Thread):
 
             # print(self.pixel_array)
 
-    def populate_pixels_with_prediction(self, line):
+    def populate_pixels_with_prediction(self, line, direction):
 
         for pixel_record in self.map_data:
 
-            if pixel_record['line'] == line:
-                self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
-                    {'station': pixel_record['station'], 'line': line,}
+            dict_key = [line + ',' + pixel_record['station'] + ',' + direction,
+                        line + ',' + pixel_record['station'] + ',' + 'None']
 
+            #print("Dict Key", dict_key[0], dict_key[1])
+
+            if pixel_record['line'] == line:
+
+                # Check if dictionary key is in prediction data - many stations will not have prediction.
+                if dict_key[0] in self.tfl_prediction_data:
+                    self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                        {'station': pixel_record['station'], 'line': line,
+                         'time_to_station':self.tfl_prediction_data[dict_key[0]]}
+                elif dict_key[1] in self.tfl_prediction_data:
+                    self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                        {'station': pixel_record['station'], 'line': line,
+                         'time_to_station':self.tfl_prediction_data[dict_key[1]]}
+                else:
+                    self.pixel_array[int(pixel_record['strand_num'])][int(pixel_record['pixel_num'])] = \
+                        {'station': pixel_record['station'], 'line': line,
+                         'time_to_station':None}
+
+    # Draw the status according to the line status.
+    def draw_pixel_states_prediction(self):
+
+        # Cycle through each strand (4 of)
+        for i in range(4):
+            self.set_pixel_strand(i)
+
+            # There is only 1 logical strip - set them to black
+            for j in range(100):
+                self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
+
+            #self.strip.show()
+            #time.sleep(0.4)
+
+            # Process each pixel, some pixels are over-written as they represent multiple lines.
+            # TODO: Need to modify this part to go through the line order.
+            for j in range(100):  # Go through each of the pixels
+
+                if self.pixel_array[i][j] != 0:
+
+                    # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
+                    #if self.pixel_array[i][j]['service_type'] not in self.patterns.keys():
+                    #    print("Error - don't recognise {} - setting to default for pixel {}, {}"
+                    #          .format(self.pixel_array[i][j]['service_type'], i, j))
+                    #    self.pixel_array[i][j]['service_type'] = 'default'
+
+                    # Patterns use different pixel blinking frequencies to show state. The pixel data has the line name
+                    # as part of its data.
+
+                    #print("££", self.pixel_array[i][j]["time_to_station"])
+
+                    if self.pixel_array[i][j]["time_to_station"] != None and \
+                            self.pixel_array[i][j]["time_to_station"]<120:
+
+                        #print(i,j, self.line_colours[self.pixel_array[i][j]['line']],
+                        #      self.pixel_array[i][j]["time_to_station"])
+
+                        # brightness = (180 - self.pixel_array[i][j]['time_to_station']) / 1024
+
+                        colour = (self.line_colours[self.pixel_array[i][j]['line']][0],
+                                 self.line_colours[self.pixel_array[i][j]['line']][1],
+                                 self.line_colours[self.pixel_array[i][j]['line']][2])
+
+                        # The actual setting of colour - as noted may be over-written by other lines.
+                        # print(pixel[4])
+                        self.strip.setPixelColor(j, rpi_ws281x.Color(*colour))
+
+            # Shows the pixels once they are all ready.
+            self.strip.show()
+            time.sleep(0.01)
 
     # Not a main function - leaving it in case needed for debugging.
     def set_same_colour(self, colour, count= None):
@@ -231,6 +298,7 @@ class LedStationControl(threading.Thread):
             self.strip.show()
             time.sleep(0.01)
 
+
         # rotate to the next part of the pattern.
         for key in self.patterns.keys():
             last_item = self.patterns[key].pop()
@@ -252,12 +320,12 @@ class LedStationControl(threading.Thread):
                     self.tfl_status_dict = self.tfl_status_queue.get_nowait()
 
                 # Get the latest commanded pixels from the queue
-                while not self.tfl_status_queue.empty():
+                while not self.tfl_prediction_queue.empty():
                     self.tfl_prediction_data = self.tfl_prediction_queue.get_nowait()
 
-                mode = 'status'
+                self.pixel_mode = 'status'
 
-                if mode== 'prediction':
+                if self.pixel_mode== 'prediction':
 
                     if self.tfl_prediction_data is not None:
                         # print(self.tfl_status_dict)
@@ -265,12 +333,11 @@ class LedStationControl(threading.Thread):
                         # self.pixel_clear()
 
                         for line in line_order:
-                            if line in self.tfl_status_dict:
-                                self.populate_pixels_with_prediction(line)
+                            self.populate_pixels_with_prediction(line, 'inbound')
                                 # print(line, self.tfl_status_dict[line])
 
                         for i in range(48):
-                            self.draw_pixel_states()
+                            self.draw_pixel_states_prediction()
                             time.sleep(0.25)
 
                         # Change the lines around so the one on top is modified.
@@ -280,7 +347,7 @@ class LedStationControl(threading.Thread):
                         # print(line_order)
 
 
-                elif mode == 'status':
+                elif self.pixel_mode == 'status':
 
                     if self.tfl_status_dict is not None:
                         # print(self.tfl_status_dict)

@@ -34,23 +34,18 @@ class Tfl_Status(threading.Thread):
 
         self.status_dictionary ={}
         self.special_messages = []
-        self.station_prediction = []
+        self.station_prediction = {}
 
         try:
             for line in self.lines:
                 self.trackernet_request_url = "https://api.tfl.gov.uk/line/{}/arrivals?app_key={}&app_id={}" \
                     .format(line, self.application_keys, self.application_id)
 
-                #print(self.trackernet_request_url)
-                #print("***\n\n")
-
                 trackernet_feed = requests.get(self.trackernet_request_url).json()
-                #print("***\n\n")
 
-                # print(trackernet_feed)
                 for row in trackernet_feed:
                     # print(row)
-                    station_name = row["stationName"].split("Underground Station")
+                    station_name = row["stationName"].split(" Underground Station")
                     platform = row["platformName"].split(" - ")
 
                     if len(platform) == 2:
@@ -63,26 +58,25 @@ class Tfl_Status(threading.Thread):
                     if "direction" in row:
                         direction = row["direction"]
                     else:
-                        direction = None
+                        direction = "None"
 
-                    #print(line)
-                    #print(row["lineName"], station_name[0], nsew_direction, platform_num, direction, row["timeToStation"])
+                    dict_key = row["lineName"] +',' + station_name[0] + ',' + direction
 
-                    prediction_entry ={}
+                    #print(key)
 
-                    prediction_entry["line":row["lineName"], "station":station_name[0],"nsew_direction":nsew_direction,
-                                      "platform_num":platform_num, "direction":direction] = row["timeToStation"]
+                    # If already populated, check if lower.
+                    if dict_key in self.station_prediction:
+                        # Copy time over if lower than current value
+                        if row["timeToStation"] < self.station_prediction[dict_key]:
+                            self.station_prediction[dict_key] = row["timeToStation"]
+                    else:
+                        self.station_prediction[dict_key] = row["timeToStation"]
 
-                    #prediction_row = {"line":row["lineName"], "station":station_name[0],"nsew_direction":nsew_direction,
-                    #                  "platform_num":platform_num, "direction":direction,
-                    #                  "time_to_station":row["timeToStation"]}
-
-                    self.station_prediction.append(prediction_entry)
-                    #print(prediction_row)
-            print(self.station_prediction)
-
+            #for key in self.station_prediction:
+            #    print(key, self.station_prediction[key])
 
         except:
+            raise()
             print("TFL Arrivals get failed - random number generator or Internet not avail?")
             print("Keep Trying")
 
