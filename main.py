@@ -78,6 +78,8 @@ class TubelineStatusDisplay(threading.Thread):
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
                 last_status_dict = self.tfl_status_thread.status_dictionary
 
+                # Put the Tube Status in a Queue to the display/
+                self.clock_display.status_msg_queue.put_nowait(self.tfl_status_thread.status_dictionary)
                 # Send special messages to be displayed - if any.
                 self.clock_display.special_msg_queue.put_nowait(self.tfl_status_thread.special_messages)
 

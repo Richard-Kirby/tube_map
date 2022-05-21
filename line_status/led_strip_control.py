@@ -74,15 +74,16 @@ class LedStationControl(threading.Thread):
 
         # Patterns for each of the Services Status types - defines how the pixels change depending on line status.
         self.patterns = {
-            'Good Service':     [1,     1,  1,  1,  1,  1,  1, 1],
-            'Severe Delays':    [1,     0,  1,  0,  1,  0,  1, 0],
-            'Minor Delays':     [1,     0.6,1,  0.6,1,  0.6,1, 0.6],
-            'Part Closure':     [1,     0,  0,  1,  0,  0,  0, 0],
-            'Planned Closure':  [1,     0,  0,  1,  0,  0,  0, 0],
-            'Closure':          [1,     0,  0,  1,  0,  0,  0, 0],
-            'Part Suspended' :  [1,     1,  0,  1,  1,  0,  1, 1],
-            'Special Service':  [1, 1, 0, 1, 1, 0, 1, 1],
-            'default':          [1,     0,  0,  0,  1,  0,  0, 0]
+            'Good Service':     [1,     1,      1,      1,      1,      1,      1,  1],
+            'Severe Delays':    [1,     0.5,    0.5,    0.5,    1,      0.5,  0.5,  0.5],
+            'Minor Delays':     [1,     0.6,    1,      0.6,    1,      0.6,    1,  0.6],
+            'Part Closure':     [1,     0,      0,      0,      1,      0,      0,  0],
+            'Planned Closure':  [1,     0,      0,      0,      1,      0,      0,  0],
+            'Closure':          [1,     0,      0,      0,      1,      0,      0,  0],
+            'Part Suspended' :  [1,     1,      0,      1,      1,      0,      1,  1],
+            'Special Service':  [.4,    0.8,    1,      0.8,   0.4,   0.8,      1,  0.8],
+            'Suspended':        [1,     1,      0,      1,      1,      0,      1,  1],
+            'default':          [1,     0,      0,      0,      1,      0,      0,  0]
         }
 
         # Base colours for each line.
@@ -304,7 +305,7 @@ class LedStationControl(threading.Thread):
             last_item = self.patterns[key].pop()
             self.patterns[key].insert(0, last_item)
 
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 
     def run(self):
@@ -433,6 +434,15 @@ if __name__ == "__main__":
 
     ]
 
+
+    for service_type in led_station_control.patterns:
+
+        sample = {'Bakerloo': service_type, 'Central': 'Good Service', 'Circle': 'Minor Delays', 'District': 'Severe Delays',
+         'Hammersmith & City': 'Minor Delays', 'Jubilee': 'Minor Delays', 'Metropolitan': 'Minor Delays',
+         'Northern': 'Good Service', 'Piccadilly': 'Suspended', 'Victoria': 'Closure',
+         'Waterloo & City': 'Good Service'}
+
+        sample_data.append(sample)
 
     while True:
         for i in range(len(sample_data)):

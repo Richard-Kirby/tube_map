@@ -50,9 +50,24 @@ class ClockDisplay(threading.Thread):
         #self.location_font = ImageFont.truetype(main_font, 30)
         #self.status_font = ImageFont.truetype(main_font, 20)
 
+        self.line_abbrev = {'Hammersmith & City': 'H&C',
+                            'Circle':'Circ',
+                            'District': 'Dist',
+                            'Jubilee':'Jub',
+                            'Metropolitan':'Met',
+                            'Central':'Cent',
+                            'Bakerloo': 'Baker',
+                            'Northern': 'North',
+                            'Piccadilly':'Picc',
+                            'Victoria':'Vic',
+                            'Waterloo & City': 'W&C',
+                            'DLR': 'DLR'}
+
         # Queue to receive time updates.
+        self.tube_status_dict = None
         self.time_queue = queue.Queue()
         self.special_msg_queue = queue.Queue()
+        self.status_msg_queue = queue.Queue()
 
     # clears the working image (not the screen)
     def image_wipe(self):
@@ -88,7 +103,7 @@ class ClockDisplay(threading.Thread):
     def display_time(self, time_to_display):
         self.image_wipe()
 
-        #
+        # Create the date string.
         date_str = time.strftime("%a %d %m %Y", time_to_display)
         w, h = self.date_font.getsize(date_str)
         date_offset = int((self.disp.height - w)/2)  # Calculate offset to center text.
@@ -98,7 +113,38 @@ class ClockDisplay(threading.Thread):
         time_str = time.strftime("%H:%M", time_to_display)
         w, h = self.time_font.getsize(time_str)
         time_offset = int((self.disp.height - w)/2)  # Calculate offset to center text
-        self.draw_text((20, time_offset), self.time_font, time_str, self.image_red, rotation=90)
+        self.draw_text((15, time_offset), self.time_font, time_str, self.image_red, rotation=90)
+
+        # Work way through the non-Good Service statuses.  Pop and then append so next time a different status
+        # will be displayed.
+        # Use Red Font unless all is Good Service.
+        display_status = None
+        pops = 0
+        image_colour = self.image_black
+
+        if self.tube_status_strs is not None:
+            while display_status is None and pops < len(self.tube_status_strs):
+                top_status = self.tube_status_strs.pop(0)
+
+                service = top_status.split(": ")
+                #print(service)
+                if service[1] != 'Good Service':
+                    display_status = top_status
+                    image_colour = self.image_red
+
+                pops = pops + 1
+                self.tube_status_strs.append(top_status)
+                #print(pops, top_status, display_status)
+
+            if display_status is None:
+                display_status = "Good Service On All Lines"
+
+        w, h = self.message_font.getsize(display_status)
+        x_loc = self.disp.height - w
+
+        self.draw_text((85, int(x_loc/2)), self.message_font, display_status, image_colour, rotation=90)
+
+
 
     # Writes the display frames to the display.
     def write_display(self):
@@ -111,7 +157,7 @@ class ClockDisplay(threading.Thread):
         w, h = font.getsize(text)
         mask = Image.new('1', (w, h), color=1)
         draw = ImageDraw.Draw(mask)
-        print("**", text)
+        # print("**", text)
         # draw.text((0, 0), text, 0, font)
         draw.multiline_text((0, 0), text, fill=0, font= font, align='left', spacing = 1)
         mask = mask.rotate(rotation, expand=True)
@@ -133,9 +179,17 @@ class ClockDisplay(threading.Thread):
                 if not self.special_msg_queue.empty():
                     self.special_msgs = self.special_msg_queue.get_nowait()
 
+                if not self.status_msg_queue.empty():
+                    self.tube_status_dict = self.status_msg_queue.get_nowait()
+                    self.tube_status_strs = []
+                    for line in self.tube_status_dict:
+                        status_str = '{}: {}'.format(self.line_abbrev[line], self.tube_status_dict[line])
+                        # print(status_str)
+                        self.tube_status_strs.append(status_str)
+
                 # Display time and date
                 if time_display_count % 3 == 0 and len(self.special_msgs) != 0:
-                    msg_to_display = self.special_msgs.pop(0)
+                    msg_to_display = time.strftime("%H:%M ", time_to_display) + self.special_msgs.pop(0)
                     self.display_tfl_message(msg_to_display)
                     self.special_msgs.append(msg_to_display)
 

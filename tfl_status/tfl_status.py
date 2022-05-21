@@ -76,7 +76,6 @@ class Tfl_Status(threading.Thread):
             #    print(key, self.station_prediction[key])
 
         except:
-            raise()
             print("TFL Arrivals get failed - random number generator or Internet not avail?")
             print("Keep Trying")
 
