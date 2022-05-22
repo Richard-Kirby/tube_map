@@ -137,7 +137,7 @@ class ClockDisplay(threading.Thread):
                 #print(pops, top_status, display_status)
 
             if display_status is None:
-                display_status = "Good Service On All Lines"
+                display_status = "Good Service on All Lines"
 
         w, h = self.message_font.getsize(display_status)
         x_loc = self.disp.height - w

@@ -121,6 +121,9 @@ class LedStationControl(threading.Thread):
         # Create a pixel array for storing the pixel data for processing
         self.pixel_array = [[0] * 100, [0] * 100, [0] * 100, [0] * 100]
 
+        # Pixel Mode can be prediction or status - setting to None to initialise.
+        self.pixel_mode = None
+
     # prints out the pixel array sparsely (non-zero)
     def print_pixels(self):
         for i in range(4):
@@ -167,53 +170,49 @@ class LedStationControl(threading.Thread):
     # Draw the status according to the line status.
     def draw_pixel_states_prediction(self):
 
-        # Cycle through each strand (4 of)
-        for i in range(4):
-            self.set_pixel_strand(i)
+        # Cycle through 200 times to allow for some blanking.
+        for blank_counter in range(200):
 
-            # There is only 1 logical strip - set them to black
-            for j in range(100):
-                self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
+            # Cycle through each strand (4 of)
+            for i in range(4):
+                self.set_pixel_strand(i)
 
-            #self.strip.show()
-            #time.sleep(0.4)
+                # There is only 1 logical strip - set them to black
+                for j in range(100):
+                    self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
 
-            # Process each pixel, some pixels are over-written as they represent multiple lines.
-            # TODO: Need to modify this part to go through the line order.
-            for j in range(100):  # Go through each of the pixels
+                # Process each pixel, some pixels are over-written as they represent multiple lines.
+                for j in range(100):  # Go through each of the pixels
 
-                if self.pixel_array[i][j] != 0:
+                    if self.pixel_array[i][j] != 0:
 
-                    # Set service type to default if not recognised.  Raise an error so it can be sorted out later.
-                    #if self.pixel_array[i][j]['service_type'] not in self.patterns.keys():
-                    #    print("Error - don't recognise {} - setting to default for pixel {}, {}"
-                    #          .format(self.pixel_array[i][j]['service_type'], i, j))
-                    #    self.pixel_array[i][j]['service_type'] = 'default'
 
-                    # Patterns use different pixel blinking frequencies to show state. The pixel data has the line name
-                    # as part of its data.
+                        if self.pixel_array[i][j]["time_to_station"] != None and \
+                                self.pixel_array[i][j]["time_to_station"]< 60*15:
 
-                    #print("££", self.pixel_array[i][j]["time_to_station"])
+                            # Calculate how often the pixel should be blanked.
+                            blank_on = int(100* (1-((60 * 15 - self.pixel_array[i][j]["time_to_station"]) / (60 * 15))))
+                            print(self.pixel_array[i][j]["station"], self.pixel_array[i][j]["time_to_station"], blank_on)
 
-                    if self.pixel_array[i][j]["time_to_station"] != None and \
-                            self.pixel_array[i][j]["time_to_station"]<120:
+                            #print(i,j, self.line_colours[self.pixel_array[i][j]['line']],
+                            #      self.pixel_array[i][j]["time_to_station"])
 
-                        #print(i,j, self.line_colours[self.pixel_array[i][j]['line']],
-                        #      self.pixel_array[i][j]["time_to_station"])
+                            # brightness = (180 - self.pixel_array[i][j]['time_to_station']) / 1024
 
-                        # brightness = (180 - self.pixel_array[i][j]['time_to_station']) / 1024
+                            if blank_counter % blank_on:
+                                colour = (0, 0, 0)
+                            else:
+                                colour = (self.line_colours[self.pixel_array[i][j]['line']][0],
+                                        self.line_colours[self.pixel_array[i][j]['line']][1],
+                                        self.line_colours[self.pixel_array[i][j]['line']][2])
 
-                        colour = (self.line_colours[self.pixel_array[i][j]['line']][0],
-                                 self.line_colours[self.pixel_array[i][j]['line']][1],
-                                 self.line_colours[self.pixel_array[i][j]['line']][2])
+                            # The actual setting of colour
+                            self.strip.setPixelColor(j, rpi_ws281x.Color(*colour))
 
-                        # The actual setting of colour - as noted may be over-written by other lines.
-                        # print(pixel[4])
-                        self.strip.setPixelColor(j, rpi_ws281x.Color(*colour))
-
-            # Shows the pixels once they are all ready.
-            self.strip.show()
-            time.sleep(0.01)
+                # Shows the pixels once they are all ready.
+                self.strip.show()
+                time.sleep(0.01)
+            time.sleep(0.02)
 
     # Not a main function - leaving it in case needed for debugging.
     def set_same_colour(self, colour, count= None):
@@ -264,13 +263,7 @@ class LedStationControl(threading.Thread):
                 self.strip.setPixelColor(j, rpi_ws281x.Color(0, 0, 0))
 
             # Some pixels are not used - only get those pixels that are populated.
-            #with self.db_con:
-            #    query = "Select * from Pixels WHERE Status != 'No Status' AND StrandNum == '{}'".format(i)
-            #    # print(query)
-            #    pixel_data = self.db_con.execute(query)
-
             # Process each pixel, some pixels are over-written as they represent multiple lines.
-            # TODO: Need to modify this part to go through the line order.
             for j in range(100): # Go through each of the pixels
 
                 if self.pixel_array[i][j] !=0:
@@ -346,7 +339,6 @@ class LedStationControl(threading.Thread):
                         end = line_order.pop()
                         line_order.insert(0, end)
                         # print(line_order)
-
 
                 elif self.pixel_mode == 'status':
 
