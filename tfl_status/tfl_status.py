@@ -29,6 +29,8 @@ class Tfl_Status(threading.Thread):
         self.lines = ['Circle', 'District', 'Hammersmith-City', 'Jubilee', 'Metropolitan', 'Central', 'Bakerloo',
                           'Northern', 'Piccadilly', 'Victoria', 'Waterloo-City']
 
+        self.status_lock = threading.Lock()
+
     # Get the status from the TFL site and process it to get just the summary status.
     def get_summary_status(self):
 
@@ -36,6 +38,7 @@ class Tfl_Status(threading.Thread):
         self.special_messages = []
         self.station_prediction = {}
 
+        '''
         try:
             for line in self.lines:
                 self.trackernet_request_url = "https://api.tfl.gov.uk/line/{}/arrivals?app_key={}&app_id={}" \
@@ -78,16 +81,18 @@ class Tfl_Status(threading.Thread):
         except:
             print("TFL Arrivals get failed - random number generator or Internet not avail?")
             print("Keep Trying")
+        '''
 
         try:
             result = requests.get(self.status_request_url).json()
+
+            self.status_lock.acquire()
             for line in result:
-                #print(line)
-                #print (line['name'],":", line['lineStatuses'][0]['statusSeverityDescription'])
                 if "reason" in line['lineStatuses'][0]:
                     #print(line['name'], ":", line['lineStatuses'][0]['reason'])
                     self.special_messages.append(line['lineStatuses'][0]['reason'])
                 self.status_dictionary[line['name']] = line['lineStatuses'][0]['statusSeverityDescription']
+            self.status_lock.release()
         except: # removed raise exception - would mean it just gives up.
             print("tfl status get failed - random number generator or Internet not avail?")
             print("Keep Trying")

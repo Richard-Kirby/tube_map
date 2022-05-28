@@ -71,9 +71,12 @@ class TubelineStatusDisplay(threading.Thread):
             current_time = time.localtime()
             # print(current_time.tm_min, self.last_time_displayed)
 
-            # Check if any update on TFL Status
+            # Check if any update on TFL Status, but lock it first.  Producing thread might be writing.
+            self.tfl_status_thread.status_lock.acquire()
+
             if (self.tfl_status_thread.status_dictionary is not None and self.tfl_status_thread.status_dictionary !=
                 last_status_dict):
+
                 # print("** Change in Status or first time getting data")
                 self.led_station_control.tfl_status_queue.put_nowait(self.tfl_status_thread.status_dictionary)
                 last_status_dict = self.tfl_status_thread.status_dictionary
@@ -83,7 +86,10 @@ class TubelineStatusDisplay(threading.Thread):
                 # Send special messages to be displayed - if any.
                 self.clock_display.special_msg_queue.put_nowait(self.tfl_status_thread.special_messages)
 
-            # Check if any update on prediction
+            # release the tfl status thread status data for writing
+            self.tfl_status_thread.status_lock.release()
+
+            '''# Check if any update on prediction
             if (self.tfl_status_thread.station_prediction is not None and self.tfl_status_thread.station_prediction !=
                 last_station_prediction):
                 # print("** Change in Status or first time getting data")
@@ -93,6 +99,7 @@ class TubelineStatusDisplay(threading.Thread):
                 # Send special messages to be displayed - if any.
                 if self.tfl_status_thread.special_messages!=None:
                     self.clock_display.special_msg_queue.put_nowait(self.tfl_status_thread.special_messages)
+            '''
 
             # checking whether time display needs to be updated
             if self.last_time_displayed is None or (

@@ -4,6 +4,12 @@ import time
 import threading
 import queue
 import textwrap
+import socket
+#from pydub import AudioSegment
+#from pydub.playback import play
+
+from subprocess import run
+import os
 
 import epaper
 
@@ -14,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 import logging
 # create logger
 logger = logging.getLogger(__name__)
+
 
 # Raspberry Pi pin configuration:
 RST = 27
@@ -50,7 +57,7 @@ class ClockDisplay(threading.Thread):
         #self.location_font = ImageFont.truetype(main_font, 30)
         #self.status_font = ImageFont.truetype(main_font, 20)
 
-        self.line_abbrev = {'Hammersmith & City': 'H&C',
+        self.line_abbrev = {'Hammersmith & City': 'H and C',
                             'Circle':'Circ',
                             'District': 'Dist',
                             'Jubilee':'Jub',
@@ -60,14 +67,24 @@ class ClockDisplay(threading.Thread):
                             'Northern': 'North',
                             'Piccadilly':'Picc',
                             'Victoria':'Vic',
-                            'Waterloo & City': 'W&C',
+                            'Waterloo & City': 'W and C',
                             'DLR': 'DLR'}
 
         # Queue to receive time updates.
         self.tube_status_dict = None
+        self.tube_status_strs = []
         self.time_queue = queue.Queue()
         self.special_msg_queue = queue.Queue()
         self.status_msg_queue = queue.Queue()
+
+        self.speaker_host, self.speaker_port = "localhost", 9999
+
+        # SOCK_DGRAM is the socket type to use for UDP sockets
+        self.speaker_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+
+        # Mind the gap message
+        self.mind_the_gap_wav = '111613__doubletrigger__mind-the-gap.wav'
 
     # clears the working image (not the screen)
     def image_wipe(self):
@@ -96,8 +113,19 @@ class ClockDisplay(threading.Thread):
             self.draw_text((y_loc, x_loc), self.message_font, part, self.image_red, rotation = 90)
             y_loc = y_loc + font_vert + 0
 
+
+        # Get the message read out as well.
+        # self.send_message_to_speaker(message)
+
         # Write to the display once image is ready.
         self.write_display()
+
+    # Send a message to the program handling the audio speaker interface.
+    def send_message_to_speaker(self, message):
+
+        # Messages are sent to the speaker program via UDP.
+        self.speaker_socket.sendto(bytes(message + "\n", "utf-8"), (self.speaker_host, self.speaker_port))
+
 
     # Displays ddte and time on the screen
     def display_time(self, time_to_display):
@@ -122,25 +150,37 @@ class ClockDisplay(threading.Thread):
         pops = 0
         image_colour = self.image_black
 
-        if self.tube_status_strs is not None:
+        if len(self.tube_status_strs)>0:
+            print(self.tube_status_strs)
             while display_status is None and pops < len(self.tube_status_strs):
                 top_status = self.tube_status_strs.pop(0)
-
+                # print(top_status)
                 service = top_status.split(": ")
-                #print(service)
+                # print(service)
                 if service[1] != 'Good Service':
                     display_status = top_status
                     image_colour = self.image_red
 
                 pops = pops + 1
                 self.tube_status_strs.append(top_status)
-                #print(pops, top_status, display_status)
+                print(pops, top_status, display_status, len(self.tube_status_strs))
 
             if display_status is None:
                 display_status = "Good Service on All Lines"
 
         w, h = self.message_font.getsize(display_status)
         x_loc = self.disp.height - w
+
+        # self.send_message_to_speaker(display_status)
+        # play(self.mind_the_gap_wav)
+
+        # basecmd = ["mplayer", "-ao", "alsa:device=bluetooth"]
+        # myfile = "/nums/32.wav"
+        #cmd_str = 'bash /home/pi/tube_map/sounds/google_voice.sh "mind the gap"'
+        #print(cmd_str)
+        #return_code = os.system(cmd_str)
+        #print(return_code, cmd_str)
+
 
         self.draw_text((85, int(x_loc/2)), self.message_font, display_status, image_colour, rotation=90)
 
@@ -180,6 +220,7 @@ class ClockDisplay(threading.Thread):
                     self.special_msgs = self.special_msg_queue.get_nowait()
 
                 if not self.status_msg_queue.empty():
+                    print("New status messages")
                     self.tube_status_dict = self.status_msg_queue.get_nowait()
                     self.tube_status_strs = []
                     for line in self.tube_status_dict:
@@ -189,12 +230,18 @@ class ClockDisplay(threading.Thread):
 
                 # Display time and date
                 if time_display_count % 3 == 0 and len(self.special_msgs) != 0:
-                    msg_to_display = time.strftime("%H:%M ", time_to_display) + self.special_msgs.pop(0)
+                    msg = self.special_msgs.pop(0)
+                    msg_to_display = time.strftime("%H:%M ", time_to_display) + msg
                     self.display_tfl_message(msg_to_display)
-                    self.special_msgs.append(msg_to_display)
+                    self.special_msgs.append(msg)
 
                 else:
                     self.display_time(time_to_display)
+
+                if time_to_display.tm_min % 15 == 0 and len(self.special_msgs) != 0:
+                    self.send_message_to_speaker(time.strftime("%H:%M ", time_to_display))
+                    for msg in self.special_msgs:
+                        self.send_message_to_speaker(msg)
 
                 # Write to the display - should be ready.
                 self.write_display()
