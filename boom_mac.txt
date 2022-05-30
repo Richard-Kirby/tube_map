@@ -1,3 +1,5 @@
 Boom MAC
 
 88:C6:26:7A:DC:E0
+
+subprocess.run(['bluetoothctl', 'connect', 'D1:03:01:7E:BH:11'])

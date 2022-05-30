@@ -151,7 +151,7 @@ class ClockDisplay(threading.Thread):
         image_colour = self.image_black
 
         if len(self.tube_status_strs)>0:
-            print(self.tube_status_strs)
+            #(self.tube_status_strs)
             while display_status is None and pops < len(self.tube_status_strs):
                 top_status = self.tube_status_strs.pop(0)
                 # print(top_status)
@@ -163,26 +163,15 @@ class ClockDisplay(threading.Thread):
 
                 pops = pops + 1
                 self.tube_status_strs.append(top_status)
-                print(pops, top_status, display_status, len(self.tube_status_strs))
+                #print(pops, top_status, display_status, len(self.tube_status_strs))
 
             if display_status is None:
                 display_status = "Good Service on All Lines"
 
-        w, h = self.message_font.getsize(display_status)
-        x_loc = self.disp.height - w
+            w, h = self.message_font.getsize(display_status)
+            x_loc = self.disp.height - w
 
-        # self.send_message_to_speaker(display_status)
-        # play(self.mind_the_gap_wav)
-
-        # basecmd = ["mplayer", "-ao", "alsa:device=bluetooth"]
-        # myfile = "/nums/32.wav"
-        #cmd_str = 'bash /home/pi/tube_map/sounds/google_voice.sh "mind the gap"'
-        #print(cmd_str)
-        #return_code = os.system(cmd_str)
-        #print(return_code, cmd_str)
-
-
-        self.draw_text((85, int(x_loc/2)), self.message_font, display_status, image_colour, rotation=90)
+            self.draw_text((85, int(x_loc/2)), self.message_font, display_status, image_colour, rotation=90)
 
 
 
@@ -220,7 +209,7 @@ class ClockDisplay(threading.Thread):
                     self.special_msgs = self.special_msg_queue.get_nowait()
 
                 if not self.status_msg_queue.empty():
-                    print("New status messages")
+                    #print("New status messages")
                     self.tube_status_dict = self.status_msg_queue.get_nowait()
                     self.tube_status_strs = []
                     for line in self.tube_status_dict:
@@ -238,8 +227,10 @@ class ClockDisplay(threading.Thread):
                 else:
                     self.display_time(time_to_display)
 
-                if time_to_display.tm_min % 15 == 0 and len(self.special_msgs) != 0:
+                if time_to_display.tm_min % 20 == 0 and len(self.special_msgs) != 0:
                     self.send_message_to_speaker(time.strftime("%H:%M ", time_to_display))
+                    if len(self.special_msgs) == 0:
+                        self.special_msgs.append("Mind the Gap.  No Smoking.")
                     for msg in self.special_msgs:
                         self.send_message_to_speaker(msg)
 

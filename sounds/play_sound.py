@@ -11,6 +11,7 @@
 import os
 import textwrap
 import subprocess
+import time
 
 
 import socketserver
@@ -24,22 +25,27 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     """
 
     def handle(self):
+        #print("Play sound handler starting")
         data = self.request[0].strip()
         socket = self.request[1]
-        print("{} wrote:".format(self.client_address[0]))
+        #print("{} wrote:".format(self.client_address[0]))
 
         msg_txt = data.decode('ascii')
 
         # Replace & with "and" as & is not read properly.
-        msg_txt =msg_txt.replace("&", "and")
+        msg_txt = msg_txt.replace("&", "and")
+        #msg_txt = msg_txt.replace("'", "")
 
-        print(msg_txt, len(msg_txt))
+        #print(msg_txt, len(msg_txt))
 
         parts = textwrap.wrap(msg_txt, 200)
 
-        voice_txt = "/bin/bash /home/pi/tube_map/sounds/google_voice.sh {}".format(parts[0])
+        voice_txt = '/bin/bash /home/pi/tube_map/sounds/google_voice.sh "{}"'.format(parts[0])
 
-        print(voice_txt)
+        return_code = subprocess.run(['bluetoothctl', 'connect', '88:C6:26:7A:DC:E0'])
+        # print("bluetoothctl return code for connect is {}".format(return_code))
+
+        print("\n\n", voice_txt, "\n")
 
         os.system(voice_txt)
 
@@ -47,6 +53,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
+
+    print("Starting sound player.")
     with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
         server.serve_forever()
 
